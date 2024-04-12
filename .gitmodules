@@ -1,0 +1,3 @@
+[submodule "src/Plus.AutoApi"]
+	path = src/Plus.AutoApi
+	url = https://github.com/baozhangchi/Plus.AutoApi.git
