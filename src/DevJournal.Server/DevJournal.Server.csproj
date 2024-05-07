@@ -8,14 +8,16 @@
 		<PublishAot>true</PublishAot>
 		<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
 	</PropertyGroup>
-
 	<ItemGroup>
 		<ProjectReference Include="..\AotGenerator\AotGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-	    <ProjectReference Include="..\AotGenerator\AotGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-</ItemGroup>
+	</ItemGroup>
 
 	<ItemGroup>
-	  <Folder Include="Services\" />
+		<PackageReference Include="SqlSugarCore" Version="5.1.4.154" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Using Include="SqlSugar" />
 	</ItemGroup>
 
 </Project>

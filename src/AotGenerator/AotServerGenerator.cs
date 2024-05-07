@@ -1,8 +1,13 @@
-﻿using System.Linq;
+﻿#region
+
+using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+
+#endregion
 
 namespace AotGenerator;
 
@@ -20,9 +25,12 @@ public class AotServerGenerator : IIncrementalGenerator
     {
         context.RegisterSourceOutput(context.CompilationProvider, (sourceProductionContext, compilation) =>
         {
+            //if (!Debugger.IsAttached)
+            //{
+            //    Debugger.Launch();
+            //}
             var mainMethod = compilation.GetEntryPoint(CancellationToken.None);
-            var @namespace = mainMethod!.ContainingNamespace.ToDisplayString();
-            //GenerateAutoApi(@namespace, sourceProductionContext);
+            var @namespace = compilation.AssemblyName!;
             GenerateAttributes(@namespace, sourceProductionContext, _attributeNames);
             GenerateWebApplicationExtensions(@namespace, sourceProductionContext, compilation);
         });
@@ -36,10 +44,7 @@ public class AotServerGenerator : IIncrementalGenerator
         foreach (var attributeName in attributeNames)
         {
             var name = attributeName;
-            if (!name.EndsWith("Attribute"))
-            {
-                name = $"{name}Attribute";
-            }
+            if (!name.EndsWith("Attribute")) name = $"{name}Attribute";
 
             namespaceDeclarationSyntax = namespaceDeclarationSyntax.AddMembers(SyntaxFactory
                 .ClassDeclaration(name)
@@ -58,11 +63,6 @@ public class AotServerGenerator : IIncrementalGenerator
     private static void GenerateWebApplicationExtensions(string @namespace,
         SourceProductionContext sourceProductionContext, Compilation compilation)
     {
-        //if (!Debugger.IsAttached)
-        //{
-        //    Debugger.Launch();
-        //}
-
         var className = "WebApplicationExtensions";
         var methodDeclarationSyntax =
             SyntaxFactory
@@ -77,10 +77,8 @@ public class AotServerGenerator : IIncrementalGenerator
                 .WithBody(SyntaxFactory.Block());
 
         foreach (var syntaxTree in compilation.SyntaxTrees)
-        {
             methodDeclarationSyntax = AddMap(methodDeclarationSyntax, syntaxTree, sourceProductionContext, @namespace,
                 compilation);
-        }
 
         methodDeclarationSyntax =
             methodDeclarationSyntax.AddBodyStatements(SyntaxFactory.ParseStatement("return app;"));
@@ -181,36 +179,24 @@ public class AotServerGenerator : IIncrementalGenerator
         AttributeSyntax attributeSyntax = null;
 
         if (classDeclarationSyntax.AttributeLists.Any())
-        {
             foreach (var attributeListSyntax in classDeclarationSyntax.AttributeLists)
             {
-                if (attributeSyntax != null)
-                {
-                    break;
-                }
+                if (attributeSyntax != null) break;
 
                 if (attributeListSyntax.Attributes.Any())
-                {
                     foreach (var attribute in attributeListSyntax.Attributes)
                     {
-                        if (attributeSyntax != null)
-                        {
-                            break;
-                        }
+                        if (attributeSyntax != null) break;
 
                         foreach (var attributeName in attributeNames)
-                        {
                             if (attribute.Name.ToFullString().Equals($"{attributeName}") ||
                                 attribute.Name.ToFullString().Equals($"{attributeName}Attribute"))
                             {
                                 attributeSyntax = attribute;
                                 break;
                             }
-                        }
                     }
-                }
             }
-        }
 
         return attributeSyntax;
     }

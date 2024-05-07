@@ -1,11 +1,11 @@
-@DevJournal.Server_HostAddress = http://localhost:5196
+@DevJournal.Server_HostAddress = http://localhost:5231
 
-GET {{DevJournal.Server_HostAddress}}/todo/
+GET {{DevJournal.Server_HostAddress}}/todos/
 Accept: application/json
 
 ###
 
-GET {{DevJournal.Server_HostAddress}}/todo/1
+GET {{DevJournal.Server_HostAddress}}/todos/1
 Accept: application/json
 
 ###

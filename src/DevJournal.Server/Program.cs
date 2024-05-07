@@ -1,45 +1,42 @@
+#region
+
 using System.Text.Json.Serialization;
 
-namespace DevJournal.Server
+#endregion
+
+StaticConfig.EnableAot = true;
+var builder = WebApplication.CreateSlimBuilder(args);
+
+builder.Services.ConfigureHttpJsonOptions(options =>
 {
-    public class Program
+    options.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonSerializerContext.Default);
+});
+
+var dbFactory = () =>
+{
+    var db = new SqlSugarClient(new ConnectionConfig()
     {
-        public static void Main(string[] args)
+        IsAutoCloseConnection = true,
+        DbType = DbType.Sqlite,
+        ConnectionString = $"datasource=journal.db"
+    }, c =>
+    {
+        c.Aop.OnLogExecuting = (sql, parameters) =>
         {
-            var builder = WebApplication.CreateSlimBuilder(args);
+            Console.WriteLine(UtilMethods.GetNativeSql(sql, parameters));
+        };
+    });
+    return db;
+};
 
-            builder.Services.ConfigureHttpJsonOptions(options =>
-            {
-                options.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonSerializerContext.Default);
-            });
+var app = builder.Build();
+app.SetMap();
 
-            var app = builder.Build();
+app.Run();
 
-            app.SetMap();
-            //var sampleTodos = new Todo[] {
-            //    new(1, "Walk the dog"),
-            //    new(2, "Do the dishes", DateOnly.FromDateTime(DateTime.Now)),
-            //    new(3, "Do the laundry", DateOnly.FromDateTime(DateTime.Now.AddDays(1))),
-            //    new(4, "Clean the bathroom"),
-            //    new(5, "Clean the car", DateOnly.FromDateTime(DateTime.Now.AddDays(2)))
-            //};
+public record Todo(int Id, string? Title, DateOnly? DueBy = null, bool IsComplete = false);
 
-            //var todosApi = app.MapGroup("/todos");
-            //todosApi.MapGet("/", () => sampleTodos);
-            //todosApi.MapGet("/{id}", (int id) =>
-            //    sampleTodos.FirstOrDefault(a => a.Id == id) is { } todo
-            //        ? Results.Ok(todo)
-            //        : Results.NotFound());
-
-            app.Run();
-        }
-    }
-
-    public record Todo(int Id, string? Title, DateOnly? DueBy = null, bool IsComplete = false);
-
-    [JsonSerializable(typeof(Todo[]))]
-    internal partial class AppJsonSerializerContext : JsonSerializerContext
-    {
-
-    }
+[JsonSerializable(typeof(Todo[]))]
+internal partial class AppJsonSerializerContext : JsonSerializerContext
+{
 }
