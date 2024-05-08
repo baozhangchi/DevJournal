@@ -1,6 +1,5 @@
 ﻿#region
 
-using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using Microsoft.CodeAnalysis;
@@ -19,6 +18,8 @@ public class AotServerGenerator : IIncrementalGenerator
     static AotServerGenerator()
     {
         _attributeNames = new[] { "Group", "Get", "Post", "Delete", "Put" };
+        var type = typeof(AotServerGenerator);
+        var assembly = type.Assembly;
     }
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
@@ -44,7 +45,10 @@ public class AotServerGenerator : IIncrementalGenerator
         foreach (var attributeName in attributeNames)
         {
             var name = attributeName;
-            if (!name.EndsWith("Attribute")) name = $"{name}Attribute";
+            if (!name.EndsWith("Attribute"))
+            {
+                name = $"{name}Attribute";
+            }
 
             namespaceDeclarationSyntax = namespaceDeclarationSyntax.AddMembers(SyntaxFactory
                 .ClassDeclaration(name)
@@ -52,7 +56,8 @@ public class AotServerGenerator : IIncrementalGenerator
                 .AddBaseListTypes(
                     SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName("global::System.Attribute")))
                 .AddMembers(SyntaxFactory.ParseMemberDeclaration("private readonly string _pattern;")!,
-                    SyntaxFactory.ParseMemberDeclaration($"public {name}(string pattern){{ _pattern = pattern;}}")!));
+                    SyntaxFactory.ParseMemberDeclaration($"public {name}(string pattern){{ _pattern = pattern;}}")!)
+                .AddGeneratedCodeAttribute());
         }
 
         var compilationUnitSyntax = SyntaxFactory.CompilationUnit().AddMembers(namespaceDeclarationSyntax);
@@ -77,8 +82,10 @@ public class AotServerGenerator : IIncrementalGenerator
                 .WithBody(SyntaxFactory.Block());
 
         foreach (var syntaxTree in compilation.SyntaxTrees)
+        {
             methodDeclarationSyntax = AddMap(methodDeclarationSyntax, syntaxTree, sourceProductionContext, @namespace,
                 compilation);
+        }
 
         methodDeclarationSyntax =
             methodDeclarationSyntax.AddBodyStatements(SyntaxFactory.ParseStatement("return app;"));
@@ -88,7 +95,8 @@ public class AotServerGenerator : IIncrementalGenerator
 
         var compilationUnitSyntax = SyntaxFactory.CompilationUnit()
             .AddMembers(SyntaxFactory
-                .NamespaceDeclaration(SyntaxFactory.ParseName(@namespace)).AddMembers(classDeclarationSyntax));
+                .NamespaceDeclaration(SyntaxFactory.ParseName("Microsoft.AspNetCore.Builder"))
+                .AddMembers(classDeclarationSyntax.AddGeneratedCodeAttribute()));
         sourceProductionContext.AddSource($"{className}.g.cs",
             compilationUnitSyntax.NormalizeWhitespace().ToFullString());
     }
@@ -140,7 +148,7 @@ public class AotServerGenerator : IIncrementalGenerator
     {
         var semanticModel = compilation.GetSemanticModel(serviceClassDeclarationSyntax.SyntaxTree);
         var symbol = semanticModel.GetDeclaredSymbol(serviceClassDeclarationSyntax)!;
-        var className = $"{serviceClassDeclarationSyntax.Identifier.Text}Extensions";
+        var className = $"{serviceClassDeclarationSyntax.Identifier.Text}SyntaxExtensions";
         var methodDeclarationSyntax = (MethodDeclarationSyntax)SyntaxFactory.ParseMemberDeclaration(
                 $@"public static void Map{serviceClassDeclarationSyntax.Identifier.Text}(this global::Microsoft.AspNetCore.Builder.WebApplication app){{}}")
             !;
@@ -179,24 +187,36 @@ public class AotServerGenerator : IIncrementalGenerator
         AttributeSyntax attributeSyntax = null;
 
         if (classDeclarationSyntax.AttributeLists.Any())
+        {
             foreach (var attributeListSyntax in classDeclarationSyntax.AttributeLists)
             {
-                if (attributeSyntax != null) break;
+                if (attributeSyntax != null)
+                {
+                    break;
+                }
 
                 if (attributeListSyntax.Attributes.Any())
+                {
                     foreach (var attribute in attributeListSyntax.Attributes)
                     {
-                        if (attributeSyntax != null) break;
+                        if (attributeSyntax != null)
+                        {
+                            break;
+                        }
 
                         foreach (var attributeName in attributeNames)
+                        {
                             if (attribute.Name.ToFullString().Equals($"{attributeName}") ||
                                 attribute.Name.ToFullString().Equals($"{attributeName}Attribute"))
                             {
                                 attributeSyntax = attribute;
                                 break;
                             }
+                        }
                     }
+                }
             }
+        }
 
         return attributeSyntax;
     }
